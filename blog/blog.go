@@ -2,9 +2,11 @@ package blog
 
 import (
 	"database/sql"
+    "path/filepath"
 	"html/template"
 	"log"
 	"net/http"
+    "os"
 )
 
 // Post represents a blog post.
@@ -14,13 +16,24 @@ type Post struct {
 	Content string
 }
 
-// Parse the template used for the blog posting form.
-// Ensure the "templates" directory exists at the project root with "post.html".
-var tmpl = template.Must(template.ParseFiles("templates/post.html"))
+
+// getTemplate returns the parsed template.
+func getTemplate() *template.Template {
+	path := os.Getenv("TEMPLATES_PATH")
+	if path == "" {
+		path = "templates/post.html"
+	}
+	absPath, err := filepath.Abs(path)
+	if err != nil {
+		log.Fatalf("Failed to get absolute path for template: %v", err)
+	}
+	return template.Must(template.ParseFiles(absPath))
+}
 
 // PostBlogHandler handles GET and POST requests for blog posts.
 func PostBlogHandler(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+        tmpl := getTemplate()
 		switch r.Method {
 		case "GET":
 			// Render the form for creating a new blog post.

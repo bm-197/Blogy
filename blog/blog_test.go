@@ -3,7 +3,6 @@ package blog
 import (
 	"bytes"
 	"database/sql"
-	"html/template"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -35,6 +34,19 @@ func setupTestDB(t *testing.T) *sql.DB {
 	return db
 }
 
+// writeDummyTemplate creates a dummy template file with the provided content and sets the TEMPLATES_PATH env variable.
+func writeDummyTemplate(t *testing.T, content string) string {
+	dummyPath := "dummy_post.html"
+	if err := os.WriteFile(dummyPath, []byte(content), 0644); err != nil {
+		t.Fatalf("Failed to write dummy template: %v", err)
+	}
+	// Set the environment variable to point to the dummy template.
+	if err := os.Setenv("TEMPLATES_PATH", dummyPath); err != nil {
+		t.Fatalf("Failed to set TEMPLATES_PATH: %v", err)
+	}
+	return dummyPath
+}
+
 // TestTemplateFile verifies that the template file exists and is not empty.
 // This uses os.ReadFile, the modern replacement for ioutil.ReadFile.
 func TestTemplateFile(t *testing.T) {
@@ -50,8 +62,11 @@ func TestTemplateFile(t *testing.T) {
 
 // TestGetHandler checks that a GET request renders the blog post form.
 func TestGetHandler(t *testing.T) {
-	// Override the global template with a dummy template for testing.
-	tmpl = template.Must(template.New("post").Parse(`<html><body><h1>Create a New Blog Post</h1></body></html>`))
+	// Create a dummy template file.
+	dummyContent := `<html><body><h1>Create a New Blog Post</h1></body></html>`
+	dummyPath := writeDummyTemplate(t, dummyContent)
+	// Clean up the dummy file after the test.
+	defer os.Remove(dummyPath)
 
 	db := setupTestDB(t)
 	defer db.Close()
@@ -79,11 +94,13 @@ func TestGetHandler(t *testing.T) {
 
 // TestPostHandler verifies that a POST request creates a blog post.
 func TestPostHandler(t *testing.T) {
+	// Create a dummy template file.
+	dummyContent := `<html><body><h1>Create a New Blog Post</h1></body></html>`
+	dummyPath := writeDummyTemplate(t, dummyContent)
+	defer os.Remove(dummyPath)
+
 	db := setupTestDB(t)
 	defer db.Close()
-
-	// Override the template to avoid dependency on an external file.
-	tmpl = template.Must(template.New("post").Parse(`<html><body><h1>Create a New Blog Post</h1></body></html>`))
 
 	// Create form data.
 	data := url.Values{}
